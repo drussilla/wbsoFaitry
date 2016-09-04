@@ -1,0 +1,10 @@
+{
+    "name": "wbsoFaity",
+    "version": "1.0.0",
+    "description": "Slack bot to log WBSO hours in ZOHO people",
+    "license": "MIT",
+    "dependencies": {
+        "botkit": "0.2.2",
+        "node-schedule": "1.1.1"
+    }
+}
