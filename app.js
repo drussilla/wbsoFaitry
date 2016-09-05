@@ -17,12 +17,12 @@ var bot = controller.spawn({
     token: process.env.token
 }).startRTM();
 
-var j = schedule.scheduleJob('10 17 * * 1-5', function(){
+var j = schedule.scheduleJob('10 9 * * 1-5', function(){
     console.log('Time to log working hours...');
     controller.storage.users.all(function(err, all_user_data) {
         all_user_data.forEach(function(item) {
             console.log(item.id);
-            askForTimeLog({user: item.id}, "Do you want me to log your time for today?");
+            askForTimeLog({user: item.id}, 'Do you want me to log your time for today?');
         });
     });
 });
@@ -151,23 +151,23 @@ askForTimeLog = function(message, question){
         convo.ask(question, [
         {
             pattern: bot.utterances.yes,
-            callback: function(response,convo) {
-                bot.reply(message, 'Great! I will do that for you');
-                logTime(message, new Date(), function() {
+            callback: function(response, convo) {
+                bot.reply(response, 'Great! I will do that for you');
+                logTime(response, new Date(), function() {
                     convo.next();
                 });
             }
         },
         {
             pattern: bot.utterances.no,
-            callback: function(response,convo) {
+            callback: function(response, convo) {
                 convo.say('Okay....');
                 convo.next();
             }
         },
         {
             default: true,
-            callback: function(response,convo) {
+            callback: function(response, convo) {
                 // just repeat the question
                 convo.repeat();
                 convo.next();

@@ -55,7 +55,6 @@ exports.login = function(login, password, doneCallback) {
 exports.getEmployeeInfo = function(token, email, doneCallback) {
     console.log('getEmployeeInfo(' + token + ', ' + email + ')');
     request('https://people.zoho.com/people/api/forms/P_EmployeeView/records?authtoken=' + token, function(error, response, body) {
-        console.log(body);
         if (!error && response.statusCode == 200) {
             var users = JSON.parse(body);
             var user = users.find(function(item) {
@@ -97,7 +96,6 @@ exports.logTime = function(token, userId, date, doneCallback) {
     request(
         getJobsUrl,
         function(error, response, body) {
-            console.log(body);
             var result = JSON.parse(body);
             if (!error && response.statusCode == 200 && result.response.status == 0) {
                 var job = result.response.result.find(function(item){
