@@ -89,23 +89,28 @@ askForLoginAndPassword = function(message) {
                 zoho.login(login, password, function(result) {
                     if (result.isSuccess) {
                         zoho.getEmployeeInfo(result.token, login, function(userInfo) {
-                            controller.storage.users.get(message.user, function(err, user) {
-                                if (!user) {
-                                    user = {
-                                        id: message.user,
-                                    };
-                                }
+                            if (!userInfo){
+                                conv.say('Something went wrong. Please contact <@U0BGA8B5F|Ivan>');
+                                conv.next();
+                            } else {
+                                controller.storage.users.get(message.user, function(err, user) {
+                                    if (!user) {
+                                        user = {
+                                            id: message.user,
+                                        };
+                                    }
 
-                                user.zohoid = userInfo['EmployeeID'];
-                                user.email = userInfo['Email ID'];
-                                user.firstName = userInfo['First Name'];
-                                user.lastName = userInfo['Last Name'];
-                                user.token = result.token;
-                                controller.storage.users.save(user, function(err, id) {
-                                    conv.say('Login information updated, ' + user.firstName);
-                                    conv.next();
+                                    user.zohoid = userInfo['EmployeeID'];
+                                    user.email = userInfo['Email ID'];
+                                    user.firstName = userInfo['First Name'];
+                                    user.lastName = userInfo['Last Name'];
+                                    user.token = result.token;
+                                    controller.storage.users.save(user, function(err, id) {
+                                        conv.say('I will keep you in mind, ' + user.firstName + '. You can type *status* to check WBSO or *help* to get more information about me. Have a nice day!');
+                                        conv.next();
+                                    });
                                 });
-                            });
+                            }
                         });                        
                     } else {
                         if (result.error == zoho.errors.INVALID_PASSWORD) {

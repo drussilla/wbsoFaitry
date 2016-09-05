@@ -9,6 +9,7 @@ exports.errors = {
 };
 
 exports.login = function(login, password, doneCallback) {
+    console.log('login(' + login + ', *****)');
     if (!doneCallback) {
         console.error("doneCallback is not defined")
         return;
@@ -51,27 +52,37 @@ exports.login = function(login, password, doneCallback) {
 };
 
 exports.getEmployeeInfo = function(token, email, doneCallback) {
+    console.log('getEmployeeInfo(' + token + ', ' + email + ')');
     request('https://people.zoho.com/people/api/forms/P_EmployeeView/records?authtoken=' + token, function(error, response, body) {
+        console.log(body);
         if (!error && response.statusCode == 200) {
             var users = JSON.parse(body);
             var user = users.find(function(item) {
-                return item['Email ID'] == email;
+                return item['Email ID'].toUpperCase() == email.toUpperCase();
             });
+
+            if (!user) {
+                console.error('User not found!');
+            }
+
             doneCallback(user);
         }
         else {
             console.error(error);
+            doneCallback(null);
         }
     });
 };
 
 exports.getTimeLogs = function(token, userId, fromDate, toDate, doneCallback) {
+    console.log('getTimeLogs(' + token + ', ' + userId + ', ' + fromDate + ', ' + toDate + ')');
     var url = 'http://people.zoho.com/people/api/timetracker/gettimelogs?billingStatus=all&jobId=all&authtoken=' + token + '&user=' + userId + '&fromDate=' + fromDate + '&toDate=' + toDate;
     request(
         url,
         function(error, response, body) {
+            var result = JSON.parse(body);
+            console.log(body);
             if (!error && response.statusCode == 200) {
-               var result = JSON.parse(body);
                if (result.response.status != 0) {
                    console.error(result.response.message);
                }
@@ -87,12 +98,14 @@ exports.getTimeLogs = function(token, userId, fromDate, toDate, doneCallback) {
 }
 
 exports.logTime = function(token, userId, date, doneCallback) {
+    console.log('logTime(' + token + ', ' + userId + ', ' + date + ')');
     var getJobsUrl = 'http://people.zoho.com/people/api/timetracker/getjobs?authtoken=' + token;
     request(
         getJobsUrl,
         function(error, response, body) {
+            console.log(body);
+            var result = JSON.parse(body);
             if (!error && response.statusCode == 200) {
-               var result = JSON.parse(body);
                if (result.response.status != 0) {
                    console.error(result.response.message);
                }
@@ -115,6 +128,7 @@ exports.logTime = function(token, userId, date, doneCallback) {
 }
 
 var logTimeForJob = function(token, userId, date, jobId, hours, doneCallback) {
+    console.log('logTimeForJob(' + token + ', ' + userId + ', ' + date + ', '+ jobId + ', ' + hours + ')');
     var logTimeUrl = 'https://people.zoho.com/people/api/timetracker/addtimelog' +
         '?authtoken=' + token + 
         '&user=' + userId +
@@ -125,8 +139,9 @@ var logTimeForJob = function(token, userId, date, jobId, hours, doneCallback) {
     request.post(
         logTimeUrl,
         function(error, response, body) {
+            console.log(body);
+            var result = JSON.parse(body);
             if (!error && response.statusCode == 200) {
-               var result = JSON.parse(body);
                if (result.response.status != 0) {
                    console.error(result.response.message);
                }
