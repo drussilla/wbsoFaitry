@@ -5,7 +5,8 @@ exports.errors = {
     UNEXPECTED: 1,
     INVALID_PASSWORD: 2,
     TO_MANY_TOKENS: 3,
-    INVALID_CREDENTIALS: 4
+    INVALID_CREDENTIALS: 4,
+    INVALID_TOKEN: 7202
 };
 
 exports.login = function(login, password, doneCallback) {
@@ -68,8 +69,7 @@ exports.getEmployeeInfo = function(token, email, doneCallback) {
             doneCallback(user);
         }
         else {
-            console.error(error);
-            doneCallback(null);
+            processError(error, users, doneCallback);
         }
     });
 };
@@ -82,16 +82,10 @@ exports.getTimeLogs = function(token, userId, fromDate, toDate, doneCallback) {
         function(error, response, body) {
             var result = JSON.parse(body);
             console.log(body);
-            if (!error && response.statusCode == 200) {
-               if (result.response.status != 0) {
-                   console.error(result.response.message);
-               }
-               else {
-                   doneCallback(result.response.result);
-               }
-            }
-            else {
-                console.error(error);
+            if (!error && response.statusCode == 200 && result.response.status == 0) {
+               doneCallback(result.response.result);
+            } else {
+                processError(error, result, doneCallback);
             }
         }
     );
@@ -105,26 +99,35 @@ exports.logTime = function(token, userId, date, doneCallback) {
         function(error, response, body) {
             console.log(body);
             var result = JSON.parse(body);
-            if (!error && response.statusCode == 200) {
-               if (result.response.status != 0) {
-                   console.error(result.response.message);
-               }
-               else {
-                   var job = result.response.result.find(function(item){
-                       return date >= new Date(item.fromDate) && date <= new Date(item.toDate);
-                   });
-                   if (job) {
-                       logTimeForJob(token, userId, date, job.jobId, '08:00', doneCallback);
-                   } else {
-                       doneCallback("Job for specified date not found");
-                   }
-               }
-            }
-            else {
-                console.error(error);
+            if (!error && response.statusCode == 200 && result.response.status == 0) {
+                var job = result.response.result.find(function(item){
+                    return date >= new Date(item.fromDate) && date <= new Date(item.toDate);
+                });
+
+                if (job) {
+                    logTimeForJob(token, userId, date, job.jobId, '08:00', doneCallback);
+                } else {
+                    doneCallback("Job for specified date not found");
+                }
+            } else {
+                processError(error, result, doneCallback);
             }
         }
     );
+}
+
+var processError = function(error, result, doneCallback){
+    console.error(error);
+    console.error(result.response.message);
+    console.error(result.response.status);
+    console.error(result.response.errors.code);
+    console.error(result.response.errors.message);
+    
+    if (result.response.errors.code == exports.errors.INVALID_TOKEN) {
+        doneCallback(exports.errors.INVALID_TOKEN);
+    } else {
+        doneCallback(exports.errors.UNEXPECTED);
+    }
 }
 
 var logTimeForJob = function(token, userId, date, jobId, hours, doneCallback) {
@@ -141,16 +144,10 @@ var logTimeForJob = function(token, userId, date, jobId, hours, doneCallback) {
         function(error, response, body) {
             console.log(body);
             var result = JSON.parse(body);
-            if (!error && response.statusCode == 200) {
-               if (result.response.status != 0) {
-                   console.error(result.response.message);
-               }
-               else {
-                   doneCallback(result.response.message);
-               }
-            }
-            else {
-                console.error(error);
+            if (!error && response.statusCode == 200 && result.response.status == 0) {
+                doneCallback(result.response.message);
+            } else {
+                processError(error, result, doneCallback);
             }
         }
     );

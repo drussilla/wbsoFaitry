@@ -42,7 +42,7 @@ controller.hears(['login', 'auth', 'authorize'], 'direct_message,direct_mention,
 });
 
 controller.hears(['log'], 'direct_message,direct_mention,mention', function(bot, message){
-    askForTimeLog(message, 'You 8 hours for today?');
+    askForTimeLog(message, 'Log 8 hours for you?');
 });
 
 controller.hears(['help','who are you'],  'direct_message,direct_mention,mention', function(bot, message){
@@ -61,12 +61,14 @@ controller.hears(['status(.*)'], 'direct_message', function(bot, message){
             bot.reply(message, 'Status from ' + formatDate(dateRange.from) + ' to ' + formatDate(dateRange.to) + '\nName: ' + user.firstName + ' ' + user.lastName + '\nID: ' + user.zohoid + '\nToken: ' + user.token + '\nEmail: ' + user.email);
            
             zoho.getTimeLogs(user.token, user.zohoid, formatDate(dateRange.from), formatDate(dateRange.to), function(loggedTimes) {
-                if (loggedTimes.length == 0){
+                if (isError(message, loggedTimes)) {
+                    console.error("Stop processing due to error.");
+                } else if (loggedTimes.length == 0) {
                      colorMessage(bot, message, 'Time is not logged yet', 'You should always log your time!', 'warning');
                      askForTimeLog(message, 'Do you want to log time for today?');
                 }
                 else {
-                    loggedTimes.sort(function(a, b){
+                    loggedTimes.sort(function(a, b) {
                         return Date.parse(a.workDate) - Date.parse(b.workDate);
                     }).forEach(function(item) {
                         colorMessage(bot, message, item.workDate, item.hours + ' hours on ' + item.jobName, 'good');
@@ -90,6 +92,9 @@ askForLoginAndPassword = function(message) {
                     if (result.isSuccess) {
                         zoho.getEmployeeInfo(result.token, login, function(userInfo) {
                             if (!userInfo){
+                                conv.say('Something went wrong. Please contact <@U0BGA8B5F|Ivan>');
+                                conv.next();
+                            } else if (isError(message, userInfo)){
                                 conv.say('Something went wrong. Please contact <@U0BGA8B5F|Ivan>');
                                 conv.next();
                             } else {
@@ -147,7 +152,7 @@ askForTimeLog = function(message, question){
         {
             pattern: bot.utterances.yes,
             callback: function(response,convo) {
-                convo.say('Great! I will do that');
+                bot.reply(message, 'Great! I will do that for you');
                 logTime(message, new Date(), function() {
                     convo.next();
                 });
@@ -175,15 +180,30 @@ askForTimeLog = function(message, question){
 logTime = function(message, date, doneCallback){
     controller.storage.users.get(message.user, function(err, user) {
         if (user && user.token && user.zohoid) {
-            zoho.logTime(user.token, user.zohoid, date, function(result) {          
-                bot.reply(message, result);
-                doneCallback();   
+            zoho.logTime(user.token, user.zohoid, date, function(result) {         
+                if (isError(message, result)){
+                    console.error('Stop conversation due to error');
+                } else {
+                    bot.reply(message, result);
+                }
+                doneCallback();
             });
         } else {
             bot.reply(message, 'You should *login* first.');
             doneCallback();
         }
     });
+};
+
+isError = function(message, result) {
+    if (result == zoho.errors.INVALID_TOKEN) {
+        bot.reply(message, 'Oops! Token that I have is not valid anymore. Please type *login* to fix that');
+        return true;
+    } else if (result == zoho.errors.UNEXPECTED) {
+        bot.reply(message, 'Opps! Unexpected error. Please contact <@U0BGA8B5F|Ivan>');
+        return true;
+    }
+    return false;
 };
 
 colorMessage = function(bot, message, title, text, color)
