@@ -114,6 +114,31 @@ exports.logTime = function(token, userId, date, doneCallback) {
     );
 }
 
+exports.checkIfHoliday = function(token, userId, date, doneCallback) {
+    console.log('checkIfHoliday(' + token + ', ' + userId + ', ' + date + ')');
+    var getLeavesUrl = 'https://people.zoho.com/people/api/forms/leave/getRecords?authtoken=' + token
+     + '&searchColumn=EMPLOYEEID&searchValue=' + userId;
+     request(
+        getLeavesUrl,
+        function(error, response, body) {
+            var result = JSON.parse(body);
+            if (!error && response.statusCode == 200 && result.response.status == 0) {
+                var isOnVacationForSelectDate = result.response.result.some(function(x){
+                    var item = x[Object.keys(x)[0]][0];
+                    return date >= new Date(item.From) 
+                        && date <= new Date(item.To) 
+                        && item.ApprovalStatus.toUpperCase() == 'APPROVED'
+                        && (item.Leavetype.toUpperCase() == 'HOLIDAY' || item.Leavetype.toUpperCase() == 'SICK');
+                });
+
+                doneCallback(isOnVacationForSelectDate);
+            } else {
+                processError(error, result, doneCallback);
+            }
+        }
+    );
+}
+
 var processError = function(error, result, doneCallback){
     console.error(error);
     console.error(result.response.message);

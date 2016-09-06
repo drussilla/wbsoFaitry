@@ -21,8 +21,16 @@ var j = schedule.scheduleJob('10 9 * * 1-5', function(){
     console.log('Time to log working hours...');
     controller.storage.users.all(function(err, all_user_data) {
         all_user_data.forEach(function(item) {
-            console.log(item.id);
-            askForTimeLog({user: item.id}, 'Do you want me to log your time for today?');
+            console.log('Ask user about time log ' + item.id);
+            zoho.checkIfHoliday(item.token, item.zohoid, new Date('2016-09-12'), function(isOnVacation){
+                if (isError({user: item.id}, isOnVacation)) {
+                    console.error("Cannot ask user. Error occured during holiday check");
+                } else if (!isOnVacation) {
+                    askForTimeLog({user: item.id}, 'Do you want me to log your time for today?');
+                } else {
+                    console.log('User has a holiday today. Do not ask him');
+                }
+            });
         });
     });
 });
@@ -81,7 +89,7 @@ controller.hears(['status(.*)'], 'direct_message', function(bot, message){
     });
 });
 
-askForLoginAndPassword = function(message) {
+var askForLoginAndPassword = function(message) {
     bot.startPrivateConversation(message, function(response, conv) {
         conv.ask("What is your ZOHO login?", function(response, conv) {
             var login = extractEmail(response.text);
@@ -143,7 +151,7 @@ askForLoginAndPassword = function(message) {
     });
 };
 
-askForTimeLog = function(message, question){
+var askForTimeLog = function(message, question){
     bot.startPrivateConversation(message, function(response, convo) {
         if (!convo) {
             return;
@@ -177,7 +185,7 @@ askForTimeLog = function(message, question){
     });
 };
 
-logTime = function(message, date, doneCallback){
+var logTime = function(message, date, doneCallback){
     controller.storage.users.get(message.user, function(err, user) {
         if (user && user.token && user.zohoid) {
             zoho.logTime(user.token, user.zohoid, date, function(result) {         
@@ -195,18 +203,20 @@ logTime = function(message, date, doneCallback){
     });
 };
 
-isError = function(message, result) {
-    if (result == zoho.errors.INVALID_TOKEN) {
+var isError = function(message, result) {
+    if (result === zoho.errors.INVALID_TOKEN) {
+        console.error('Invalida token');
         bot.reply(message, 'Oops! Token that I have is not valid anymore. Please type *login* to fix that');
         return true;
-    } else if (result == zoho.errors.UNEXPECTED) {
+    } else if (result === zoho.errors.UNEXPECTED) {
+        console.error('Unexpected');
         bot.reply(message, 'Opps! Unexpected error. Please contact <@U0BGA8B5F|Ivan>');
         return true;
     }
     return false;
 };
 
-colorMessage = function(bot, message, title, text, color)
+var colorMessage = function(bot, message, title, text, color)
 {
     bot.reply(message, {
         'attachments': [
@@ -219,7 +229,7 @@ colorMessage = function(bot, message, title, text, color)
         });
 }
 
-parseDates = function(dateString) {
+var parseDates = function(dateString) {
     var now = new Date();
     var result = { from : new Date(), to: now };
     if (dateString.indexOf('week') != -1) {
@@ -230,7 +240,7 @@ parseDates = function(dateString) {
     return result;
 }
 
-formatDate = function(date){
+var formatDate = function(date){
     var day = date.getDate();
     var month = date.getMonth() + 1;
     var year = date.getFullYear();
@@ -238,7 +248,7 @@ formatDate = function(date){
     return year + '-' + month + '-' + day;
 }
 
-extractEmail = function(email) {
+var extractEmail = function(email) {
     var delimiterIndex = email.indexOf('|');
     if (delimiterIndex == -1) {
         return email;
