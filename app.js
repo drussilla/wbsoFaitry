@@ -27,7 +27,7 @@ var j = schedule.scheduleJob('10 9 * * 1-5', function(){
     });
 });
 
-controller.hears(['hello', 'hi', 'привет'], 'direct_message,direct_mention,mention', function(bot, message) {
+controller.hears(['hello', 'hi', 'привет', 'hey', 'hoi', 'daag'], 'direct_message,direct_mention,mention', function(bot, message) {
     controller.storage.users.get(message.user, function(err, user) {
         if (user && user.token) {
             bot.reply(message, 'Hi! I am here to make your life easier! Type "help" to see what I can do for you');
