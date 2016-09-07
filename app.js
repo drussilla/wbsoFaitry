@@ -22,7 +22,7 @@ var j = schedule.scheduleJob('10 9 * * 1-5', function(){
     controller.storage.users.all(function(err, all_user_data) {
         all_user_data.forEach(function(item) {
             console.log('Ask user about time log ' + item.id);
-            zoho.checkIfHoliday(item.token, item.zohoid, new Date('2016-09-12'), function(isOnVacation){
+            zoho.checkIfHoliday(item.token, item.zohoid, new Date(), function(isOnVacation){
                 if (isError({user: item.id}, isOnVacation)) {
                     console.error("Cannot ask user. Error occured during holiday check");
                 } else if (!isOnVacation) {
@@ -256,3 +256,7 @@ var extractEmail = function(email) {
 
     return email.substring(delimiterIndex + 1, email.length - 1);
 }
+
+zoho.checkIfHoliday('973c456d82c9e7aa82c27c92ac780135', 20, new Date('2016-09-07'), function(data){
+    console.log(data);
+});

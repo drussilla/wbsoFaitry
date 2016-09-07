@@ -125,8 +125,10 @@ exports.checkIfHoliday = function(token, userId, date, doneCallback) {
             if (!error && response.statusCode == 200 && result.response.status == 0) {
                 var isOnVacationForSelectDate = result.response.result.some(function(x){
                     var item = x[Object.keys(x)[0]][0];
-                    return date >= new Date(item.From) 
-                        && date <= new Date(item.To) 
+                    var from = new Date(item.From);
+                    var to = new Date(item.To);
+                    return date.getDate() >= from.getDate() && date.getMonth() >= from.getMonth() && date.getFullYear() >= from.getFullYear()
+                        && date.getDate() <= to.getDate() && date.getMonth() <= to.getMonth() && date.getFullYear() <= to.getFullYear() 
                         && item.ApprovalStatus.toUpperCase() == 'APPROVED'
                         && (item.Leavetype.toUpperCase() == 'HOLIDAY' || item.Leavetype.toUpperCase() == 'SICK');
                 });
