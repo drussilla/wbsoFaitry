@@ -91,8 +91,8 @@ exports.getTimeLogs = function(token, userId, fromDate, toDate, doneCallback) {
     );
 }
 
-exports.logTime = function(token, userId, date, doneCallback) {
-    console.log('logTime(' + token + ', ' + userId + ', ' + date + ')');
+exports.logTime = function(token, userId, date, hours, doneCallback) {
+    console.log('logTime(' + token + ', ' + userId + ', ' + date + ', '+ hours +')');
     var getJobsUrl = 'http://people.zoho.com/people/api/timetracker/getjobs?authtoken=' + token;
     request(
         getJobsUrl,
@@ -105,7 +105,7 @@ exports.logTime = function(token, userId, date, doneCallback) {
                 });
 
                 if (job) {
-                    logTimeForJob(token, userId, date, job.jobId, '08:00', doneCallback);
+                    logTimeForJob(token, userId, date, job.jobId, hours, doneCallback);
                 } else {
                     doneCallback("Job for specified date not found");
                 }
@@ -125,7 +125,7 @@ exports.checkIfHoliday = function(token, userId, date, doneCallback) {
         function(error, response, body) {
             var result = JSON.parse(body);
             if (!error && response.statusCode == 200 && result.response.status == 0) {
-                var isOnVacationForSelectDate = result.response.result.some(function(x){
+                var vacationDay = result.response.result.find(function(x){
                     var item = x[Object.keys(x)[0]][0];
                     return date >= moment.utc(item.From, 'DD-MMM-YYYY', true)
                         && date <= moment.utc(item.To, 'DD-MMM-YYYY', true) 
@@ -133,7 +133,15 @@ exports.checkIfHoliday = function(token, userId, date, doneCallback) {
                         && (item.Leavetype.toUpperCase() == 'HOLIDAY' || item.Leavetype.toUpperCase() == 'SICK');
                 });
 
-                doneCallback(isOnVacationForSelectDate);
+                if (vacationDay == null) {
+                    doneCallback({isOnVacation: false});
+                    return;
+                }
+
+                doneCallback({
+                    isOnVacation: true, 
+                    isFullDay: vacationDay[Object.keys(vacationDay)[0]][0].Daystaken !== '0.5'});
+                
             } else {
                 processError(error, result, doneCallback);
             }
@@ -192,12 +200,4 @@ var parseAuthToken = function(body) {
 
     startIndex = startIndex + authTokenMark.length
     return body.substring(startIndex, startIndex + authTokenLength);
-}
-
-var formatDate = function(date){
-    var day = date.getDate();
-    var month = date.getMonth() + 1;
-    var year = date.getFullYear();
-    
-    return year + '-' + month + '-' + day;
 }

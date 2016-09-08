@@ -23,11 +23,13 @@ var j = schedule.scheduleJob('10 9 * * 1-5', function(){
     controller.storage.users.all(function(err, all_user_data) {
         all_user_data.forEach(function(item) {
             console.log('Ask user about time log ' + item.id);
-            zoho.checkIfHoliday(item.token, item.zohoid, moment.utc(), function(isOnVacation){
-                if (isError({user: item.id}, isOnVacation)) {
+            zoho.checkIfHoliday(item.token, item.zohoid, moment.utc(), function(result){
+                if (isError({user: item.id}, result)) {
                     console.error("Cannot ask user. Error occured during holiday check");
-                } else if (!isOnVacation) {
-                    askForTimeLog({user: item.id}, 'Do you want me to log your time for today?');
+                } else if (!result.isOnVacation) {
+                    askForTimeLog({user: item.id}, 'Do you want me to log 8 hours for today?', '08:00');
+                } else if (result.isOnVacation && !result.isFullDay) {
+                    askForTimeLog({user: item.id}, 'Do you want me to log 4 hours for today?', '04:00');
                 } else {
                     console.log('User has a holiday today. Do not ask him');
                 }
@@ -51,7 +53,7 @@ controller.hears(['login', 'auth', 'authorize'], 'direct_message,direct_mention,
 });
 
 controller.hears(['log'], 'direct_message,direct_mention,mention', function(bot, message){
-    askForTimeLog(message, 'Log 8 hours for you?');
+    askForTimeLog(message, 'Log 8 hours for you?', '08:00');
 });
 
 controller.hears(['help','who are you'],  'direct_message,direct_mention,mention', function(bot, message){
@@ -74,7 +76,7 @@ controller.hears(['status(.*)'], 'direct_message', function(bot, message){
                     console.error("Stop processing due to error.");
                 } else if (loggedTimes.length == 0) {
                      colorMessage(bot, message, 'Time is not logged yet', 'You should always log your time!', 'warning');
-                     askForTimeLog(message, 'Do you want to log time for today?');
+                     askForTimeLog(message, 'Do you want to log time for today?', '08:00');
                 }
                 else {
                     loggedTimes.sort(function(a, b) {
@@ -152,7 +154,7 @@ var askForLoginAndPassword = function(message) {
     });
 };
 
-var askForTimeLog = function(message, question){
+var askForTimeLog = function(message, question, hours){
     bot.startPrivateConversation(message, function(response, convo) {
         if (!convo) {
             return;
@@ -162,7 +164,7 @@ var askForTimeLog = function(message, question){
             pattern: bot.utterances.yes,
             callback: function(response, convo) {
                 bot.reply(response, 'Great! I will do that for you');
-                logTime(response, moment.utc(), function() {
+                logTime(response, moment.utc(), hours, function() {
                     convo.next();
                 });
             }
@@ -186,10 +188,10 @@ var askForTimeLog = function(message, question){
     });
 };
 
-var logTime = function(message, date, doneCallback){
+var logTime = function(message, date, hours, doneCallback){
     controller.storage.users.get(message.user, function(err, user) {
         if (user && user.token && user.zohoid) {
-            zoho.logTime(user.token, user.zohoid, date, function(result) {         
+            zoho.logTime(user.token, user.zohoid, date, hours, function(result) {         
                 if (isError(message, result)){
                     console.error('Stop conversation due to error');
                 } else {
