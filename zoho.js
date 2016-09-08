@@ -1,4 +1,5 @@
 var request = require('request');
+var moment = require('moment');
 
 exports.errors = {
     NONE: 0,
@@ -99,7 +100,8 @@ exports.logTime = function(token, userId, date, doneCallback) {
             var result = JSON.parse(body);
             if (!error && response.statusCode == 200 && result.response.status == 0) {
                 var job = result.response.result.find(function(item){
-                    return date >= new Date(item.fromDate) && date <= new Date(item.toDate);
+                    return date >= moment.utc(item.fromDate, 'YYYY-MM-DD', true) 
+                        && date <= moment.utc(item.toDate, 'YYYY-MM-DD', true);
                 });
 
                 if (job) {
@@ -125,10 +127,8 @@ exports.checkIfHoliday = function(token, userId, date, doneCallback) {
             if (!error && response.statusCode == 200 && result.response.status == 0) {
                 var isOnVacationForSelectDate = result.response.result.some(function(x){
                     var item = x[Object.keys(x)[0]][0];
-                    var from = new Date(item.From);
-                    var to = new Date(item.To);
-                    return date.getDate() >= from.getDate() && date.getMonth() >= from.getMonth() && date.getFullYear() >= from.getFullYear()
-                        && date.getDate() <= to.getDate() && date.getMonth() <= to.getMonth() && date.getFullYear() <= to.getFullYear() 
+                    return date >= moment.utc(item.From, 'DD-MMM-YYYY', true)
+                        && date <= moment.utc(item.To, 'DD-MMM-YYYY', true) 
                         && item.ApprovalStatus.toUpperCase() == 'APPROVED'
                         && (item.Leavetype.toUpperCase() == 'HOLIDAY' || item.Leavetype.toUpperCase() == 'SICK');
                 });
@@ -161,7 +161,7 @@ var logTimeForJob = function(token, userId, date, jobId, hours, doneCallback) {
         '?authtoken=' + token + 
         '&user=' + userId +
         '&jobId=' + jobId +
-        '&workDate=' + formatDate(date) + 
+        '&workDate=' + moment(date).format('YYYY-MM-DD') + 
         '&billingStatus=non-billable' +
         '&hours=' + hours;
     request.post(
@@ -194,7 +194,7 @@ var parseAuthToken = function(body) {
     return body.substring(startIndex, startIndex + authTokenLength);
 }
 
-formatDate = function(date){
+var formatDate = function(date){
     var day = date.getDate();
     var month = date.getMonth() + 1;
     var year = date.getFullYear();

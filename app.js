@@ -7,6 +7,7 @@ var zoho = require('./zoho');
 
 var Botkit = require('botkit');
 var schedule = require('node-schedule');
+var moment = require('moment');
 
 var controller = Botkit.slackbot({
     debug: false,
@@ -22,7 +23,7 @@ var j = schedule.scheduleJob('10 9 * * 1-5', function(){
     controller.storage.users.all(function(err, all_user_data) {
         all_user_data.forEach(function(item) {
             console.log('Ask user about time log ' + item.id);
-            zoho.checkIfHoliday(item.token, item.zohoid, new Date(), function(isOnVacation){
+            zoho.checkIfHoliday(item.token, item.zohoid, moment.utc(), function(isOnVacation){
                 if (isError({user: item.id}, isOnVacation)) {
                     console.error("Cannot ask user. Error occured during holiday check");
                 } else if (!isOnVacation) {
@@ -66,9 +67,9 @@ controller.hears(['status(.*)'], 'direct_message', function(bot, message){
     controller.storage.users.get(message.user, function(err, user) {
         if (user && user.token) {
             var dateRange = parseDates(message.match[1]);
-            bot.reply(message, 'Status from ' + formatDate(dateRange.from) + ' to ' + formatDate(dateRange.to) + '\nName: ' + user.firstName + ' ' + user.lastName + '\nID: ' + user.zohoid + '\nToken: ' + user.token + '\nEmail: ' + user.email);
+            bot.reply(message, 'Status from ' + moment(dateRange.from).format('YYYY-MM-DD') + ' to ' + moment(dateRange.to).format('YYYY-MM-DD') + '\nName: ' + user.firstName + ' ' + user.lastName + '\nID: ' + user.zohoid + '\nToken: ' + user.token + '\nEmail: ' + user.email);
            
-            zoho.getTimeLogs(user.token, user.zohoid, formatDate(dateRange.from), formatDate(dateRange.to), function(loggedTimes) {
+            zoho.getTimeLogs(user.token, user.zohoid, moment(dateRange.from).format('YYYY-MM-DD'), moment(dateRange.to).format('YYYY-MM-DD'), function(loggedTimes) {
                 if (isError(message, loggedTimes)) {
                     console.error("Stop processing due to error.");
                 } else if (loggedTimes.length == 0) {
@@ -161,7 +162,7 @@ var askForTimeLog = function(message, question){
             pattern: bot.utterances.yes,
             callback: function(response, convo) {
                 bot.reply(response, 'Great! I will do that for you');
-                logTime(response, new Date(), function() {
+                logTime(response, moment.utc(), function() {
                     convo.next();
                 });
             }
@@ -230,22 +231,14 @@ var colorMessage = function(bot, message, title, text, color)
 }
 
 var parseDates = function(dateString) {
-    var now = new Date();
-    var result = { from : new Date(), to: now };
+    var now = moment.utc();
+    var result = { from : moment.utc(), to: now };
     if (dateString.indexOf('week') != -1) {
-        result.from.setDate(now.getDate() - 7); 
+        result.from.substract(1, 'day');
     } else if (dateString.indexOf('month') != -1) {
-        result.from.setDate(now.getDate() - 31); 
+        result.from.substract(1, 'month'); 
     }
     return result;
-}
-
-var formatDate = function(date){
-    var day = date.getDate();
-    var month = date.getMonth() + 1;
-    var year = date.getFullYear();
-    
-    return year + '-' + month + '-' + day;
 }
 
 var extractEmail = function(email) {
@@ -256,7 +249,3 @@ var extractEmail = function(email) {
 
     return email.substring(delimiterIndex + 1, email.length - 1);
 }
-
-zoho.checkIfHoliday('973c456d82c9e7aa82c27c92ac780135', 20, new Date('2016-09-07'), function(data){
-    console.log(data);
-});
